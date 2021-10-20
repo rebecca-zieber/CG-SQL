@@ -1679,18 +1679,27 @@ static void cg_func_sign(ast_node *call_ast, charbuf *is_null, charbuf *value) {
   sem_t sem_type_expr = expr->sem->sem_type;
 
   CHARBUF_OPEN(sign_value);
-  CG_SETUP_RESULT_VAR(call_ast, sem_type_result);
-
+  CG_RESERVE_RESULT_VAR(call_ast, sem_type_result);
   CG_PUSH_EVAL(expr, C_EXPR_PRI_ROOT);
-  CG_PUSH_TEMP(temp, sem_type_expr);
 
-  cg_store_same_type(cg_main_output, temp.ptr, sem_type_result, expr_is_null.ptr, expr_value.ptr);
+  if (is_nullable(sem_type_result)) { // need a temp
+    CG_USE_RESULT_VAR();
+    CG_PUSH_TEMP(temp, sem_type_expr);
+    cg_store_same_type(cg_main_output, temp.ptr, sem_type_result, expr_is_null.ptr, expr_value.ptr);
 
-  bprintf(&sign_value, "((%s > 0) - (%s < 0))", temp_value.ptr, temp_value.ptr);
+    bprintf(&sign_value, "((%s > 0) - (%s < 0))", temp_value.ptr, temp_value.ptr);
 
-  cg_store_same_type(cg_main_output, result_var.ptr, sem_type_result, temp_is_null.ptr, sign_value.ptr);
+    cg_store_same_type(cg_main_output, result_var.ptr, sem_type_result, temp_is_null.ptr, sign_value.ptr);
 
-  CG_POP_TEMP(temp);
+    CG_POP_TEMP(temp);
+  }
+  else {
+    CG_USE_RESULT_VAR();
+    cg_store_same_type(cg_main_output, result_var.ptr, sem_type_result, expr_is_null.ptr, expr_value.ptr);
+    
+    bprintf(&sign_value, "((%s > 0) - (%s < 0))", expr_value.ptr, expr_value.ptr)
+  }
+
   CG_POP_EVAL(expr);
   CG_CLEANUP_RESULT_VAR();
   CHARBUF_CLOSE(sign_value);

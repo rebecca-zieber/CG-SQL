@@ -4549,8 +4549,7 @@ BEGIN
 END;
 
 -- TEST: codegen for sign
--- + _tmp_int_2 = - 2;
--- + sign_val_int = ((_tmp_int_2 > 0) - (_tmp_int_2 < 0));
+-- + sign_val_int = ((-2 > 0) - (-2 < 0));
 LET sign_val_int := sign(-2);
 
 -- TEST: codegen for sign: nullable arg
