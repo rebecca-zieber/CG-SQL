@@ -1049,7 +1049,7 @@ static void cg_binary(ast_node *ast, CSTR op, charbuf *is_null, charbuf *value, 
   sem_t sem_type_left = l->sem->sem_type;
   sem_t sem_type_right = r->sem->sem_type;
 
-  // this hold the formula for the answer
+  // this holds the formula for the answer
   CHARBUF_OPEN(result);
 
   CG_RESERVE_RESULT_VAR(ast, sem_type_result);
@@ -1679,27 +1679,25 @@ static void cg_func_sign(ast_node *call_ast, charbuf *is_null, charbuf *value) {
   sem_t sem_type_expr = expr->sem->sem_type;
 
   CHARBUF_OPEN(sign_value);
+
   CG_RESERVE_RESULT_VAR(call_ast, sem_type_result);
   CG_PUSH_EVAL(expr, C_EXPR_PRI_ROOT);
 
-  if (is_nullable(sem_type_result)) { // need a temp
+  CG_PUSH_TEMP(temp, sem_type_expr);
+  cg_store_same_type(cg_main_output, temp.ptr, sem_type_result, expr_is_null.ptr, expr_value.ptr);
+
+  if (is_nullable(sem_type_result)) { 
     CG_USE_RESULT_VAR();
-    CG_PUSH_TEMP(temp, sem_type_expr);
-    cg_store_same_type(cg_main_output, temp.ptr, sem_type_result, expr_is_null.ptr, expr_value.ptr);
+    cg_store_same_type(cg_main_output, result_var.ptr, sem_type_result, temp_is_null.ptr, temp_value.ptr);
 
     bprintf(&sign_value, "((%s > 0) - (%s < 0))", temp_value.ptr, temp_value.ptr);
-
-    cg_store_same_type(cg_main_output, result_var.ptr, sem_type_result, temp_is_null.ptr, sign_value.ptr);
-
-    CG_POP_TEMP(temp);
   }
   else {
-    CG_USE_RESULT_VAR();
-    cg_store_same_type(cg_main_output, result_var.ptr, sem_type_result, expr_is_null.ptr, expr_value.ptr);
-    
-    bprintf(&sign_value, "((%s > 0) - (%s < 0))", expr_value.ptr, expr_value.ptr)
+    bprintf(is_null, "0");
+    bprintf(&sign_value, "((%s > 0) - (%s < 0))", temp_value.ptr, temp_value.ptr);
   }
 
+  CG_POP_TEMP(temp);
   CG_POP_EVAL(expr);
   CG_CLEANUP_RESULT_VAR();
   CHARBUF_CLOSE(sign_value);
